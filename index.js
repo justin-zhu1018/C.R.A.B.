@@ -47,16 +47,40 @@ app.message('sleep', async ({ message, say}) => {
     await say(`Sleep now <@${message.user}>!`);
 });
 
-app.message('members', async ({message, say}) => {
-    const members_res = await app.client.conversations.members({
+app.message('!reviewers', async ({message, say}) => {
+    const membersRes = await app.client.conversations.members({
         channel: message.channel
     });
-    console.log(members_res);
-    const members = members_res.members;
+    console.log(message.text);
+    console.log(membersRes);
+
+    const regex = /\d$/;
+
+    const messageMatch = message.text.match(regex)[0];
+    if (!messageMatch) {
+      await say('Please input a number of reviewers to select');
+      return;
+    }
+
+    const membersNum = parseInt(messageMatch);
+    if (membersNum < 1) {
+      await say('Please input a number greater than 0');
+      return;
+    }
+
+    const members = membersRes.members;
+
+    if (membersNum > members.length) {
+      await say('Number of reviewers to select is higher than the members count');
+      return;
+    }
+
     members.splice(members.indexOf(message.user), 1);
-    await say(`Members are: `);
-    for (elem of members_res.members) {
-        await say(`<@${elem}>`);
+    await say(`Random members: `);
+    for (let i=0; i<membersNum; i++) {
+      const rand = Math.floor(Math.random()*members.length);
+      await say(`<@${members[rand]}>`);
+      members.splice(rand, 1);
     }
 });
 
