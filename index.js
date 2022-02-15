@@ -54,34 +54,63 @@ app.message('!reviewers', async ({message, say}) => {
     console.log(message.text);
     console.log(membersRes);
 
-    const regex = /\d$/;
+    const regex = /\d+$/;
+    try {
+      const messageMatch = message.text.match(regex)[0];
+      console.log(message.text.match(regex));
 
-    const messageMatch = message.text.match(regex)[0];
-    if (!messageMatch) {
-      await say('Please input a number of reviewers to select');
-      return;
-    }
+      const membersNum = parseInt(messageMatch);
+      console.log(membersNum);
+      if (membersNum < 1) {
+        await say('Please input a number greater than 0');
+        return;
+      }
 
-    const membersNum = parseInt(messageMatch);
-    if (membersNum < 1) {
-      await say('Please input a number greater than 0');
-      return;
-    }
+      const members = membersRes.members;
 
-    const members = membersRes.members;
+      if (membersNum > members.length) {
+        await say('Number of reviewers to select is higher than the members count');
+        return;
+      }
 
-    if (membersNum > members.length) {
-      await say('Number of reviewers to select is higher than the members count');
-      return;
-    }
+      members.splice(members.indexOf(message.user), 1);
+      await say(`Random members: `);
+      for (let i=0; i<membersNum; i++) {
+        const rand = Math.floor(Math.random()*members.length);
+        await say(`<@${members[rand]}>`);
+        members.splice(rand, 1);
+      }
 
-    members.splice(members.indexOf(message.user), 1);
-    await say(`Random members: `);
-    for (let i=0; i<membersNum; i++) {
-      const rand = Math.floor(Math.random()*members.length);
-      await say(`<@${members[rand]}>`);
-      members.splice(rand, 1);
-    }
+      await say({
+        blocks: [
+          {
+            "type": "section",
+            "text": {
+              "type": "mrkdwn",
+              "text": `Do you wish to reroll <@${message.user}>?`
+            },
+            "accessory": {
+              "type": "button",
+              "text": {
+                "type": "plain_text",
+                "text": "Reroll"
+              },
+              "action_id": "reroll_click"
+            }
+          }
+        ],
+        text: `Do you wish to reroll <@${message.user}>?`
+    });
+  }
+  catch (err) {
+    say('Please input number of reviewers to select');
+  }
+});
+
+app.action('reroll_click', async ({ body, ack, say }) => {
+  // Acknowledge the action
+  await ack();
+  await say(`<@${body.user.id}> rerolled!`);
 });
 
 (async () => {
