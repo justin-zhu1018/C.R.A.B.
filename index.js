@@ -248,7 +248,7 @@ app.action('confirm_approve', async ({ body, ack, say, client}) => {
   const channel = body.container.channel_id;
   const reviewers = temp_dict.get(channel);
   const params = body.actions[0].value.split(':');
-  ts = params[2]
+  const ts = params[2]
   try {
     await ack();
     // Start: If after approving and cr_dict is empty, refresh it with all members and let it get filtered by cr_temp_dict
@@ -284,6 +284,7 @@ app.action('confirm_cancel', async ({ body, ack, say, client}) => {
   const params = body.actions[0].value.split(':'); 
   clear_temp_dict(body.container.channel_id);
   // await say(`C.R.A.B. cancelling`);
+  const ts = params[2]
   await client.chat.postMessage({channel, thread_ts: ts, text: 'C.R.A.B cancelling'});
 });
 
