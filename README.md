@@ -31,3 +31,28 @@ Shows all commands for this slack bot
 `!feeling-crabby`
 
 Says a random crab joke
+
+
+## Setup
+
+Create a .env and fill in these details from your slack app:
+
+```
+SLACK_BOT_TOKEN=
+SLACK_SIGNING_SECRET=
+SLACK_APP_TOKEN=
+```
+
+Bot token scopes used:
+```
+channels:history
+channels:read
+chat:write
+groups:history
+groups:read
+im:history
+im:read
+mpim:history
+mpim:read
+users:read
+```
