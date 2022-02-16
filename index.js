@@ -134,12 +134,11 @@ app.message('!reviewers', async ({message, say, client}) => {
     }
   }
   const reviewers = temp_dict.get(channel);
-  const confirmText = `Please confirm that these members are available for code review. Otherwise, reroll another combination!`;
+  const confirmText = `Please confirm that these members are available for code review. Otherwise, reroll another combination! <@${message.user}>`;
   let reviewersText = "*Code Reviewers*\n";
   for(let i = 0; i < reviewers.length; i++) {
     reviewersText = reviewersText.concat(`<@${reviewers[i]}>\n`);
   }
-  await client.chat.postMessage({channel, thread_ts: ts, text: `<@${message.user}> is selecting reviewers...`});
   const result = await client.chat.postEphemeral({
     channel,
     thread_ts: ts,
