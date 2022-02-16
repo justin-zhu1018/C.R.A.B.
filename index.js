@@ -35,7 +35,7 @@ app.message('!init', async ({ message, say}) => {
   let filteredMemberList = [];
   members_res.members.forEach(async e => {
     const res = await app.client.users.info({user: e});
-    if(!res.user.is_bot)
+    // if(!res.user.is_bot)
       filteredMemberList.push(e);
   });
   const channel_id = message.channel;
@@ -114,12 +114,13 @@ app.message('!reviewers', async ({message, say}) => {
       const rand = Math.floor(Math.random()*all_members.length);
       const member = all_members.splice(rand, 1)[0]; 
       console.log(member);
-      if(!(member in temp_dict.get(channel))) {
-        temp_dict.get(channel).push(member);
-        membersNum--;
+      if((temp_dict.get(channel).includes(member))) {
+        console.log(member + " in temp dictionary")
+        continue;
       }
       else {
-        continue;
+        temp_dict.get(channel).push(member);
+        membersNum--;
       }
     } else {
       const rand = Math.floor(Math.random()*members.length);
@@ -237,7 +238,7 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
   // Acknowledge the action
   await ack();
 
-  console.log(body);
+  // console.log(body);
   // Start of copy of reviewers method
   const channel = body.container.channel_id;
   let members = next_dict.get(channel).slice();
@@ -249,22 +250,23 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
   while(membersNum > 0) {
     if(members.length == 0) {
       const all_members = members_dict.get(channel).slice();
-      console.log(all_members);
       const rand = Math.floor(Math.random()*all_members.length);
       const member = all_members.splice(rand, 1)[0]; 
-      console.log(member);
-      if(!(member in temp_dict.get(channel))) {
-        temp_dict.get(channel).push(member);
-        membersNum--;
+      // console.log(member);
+      // console.log(temp_dict.get(channel));
+      if((temp_dict.get(channel).includes(member))) {
+        console.log(member + " in temp dictionary");
+        continue;
       }
       else {
-        continue;
+        membersNum--;
+        temp_dict.get(channel).push(member);
       }
     } else {
       const rand = Math.floor(Math.random()*members.length);
       const member = members.splice(rand, 1)[0]; 
       temp_dict.get(channel).push(member);
-      console.log("Temp: " + temp_dict.get(channel));
+      // console.log("Temp: " + temp_dict.get(channel));
       membersNum--;
     }
   }
