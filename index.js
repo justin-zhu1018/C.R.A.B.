@@ -399,7 +399,7 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
 
 app.message('!feeling-crabby', async ({ message, say}) => {
   const channel = message.channel;
-  const rand = Math.floor(Math.random()*jokes.length)+1+"";
+  const rand = Math.floor(Math.random()*jokes.length);
   console.log(rand);
   await say(jokes[rand]);
 });
