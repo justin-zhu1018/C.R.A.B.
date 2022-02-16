@@ -75,8 +75,8 @@ app.message('!next', async ({ message, say}) => {
   }
 });
 
-app.message('!reviewers', async ({message, say}) => {
-  const channel = message.channel;
+app.message('!reviewers', async ({message, say, client}) => {
+  const {channel, ts} = message;
   if( !members_dict.get(channel) || !next_dict.get(channel) ){
     say(`Please type the !init command to initialize the bot first 🦀`);
     return;
@@ -136,7 +136,10 @@ app.message('!reviewers', async ({message, say}) => {
   for(let i = 0; i < reviewers.length; i++) {
     reviewersText = reviewersText.concat(`<@${reviewers[i]}>\n`);
   }
-  const result = await say({
+  const result = await client.chat.postEphemeral({
+    channel,
+    thread_ts: ts,
+    user: message.user,
     blocks: [
       {
         "type": "section",
@@ -165,7 +168,7 @@ app.message('!reviewers', async ({message, say}) => {
               "text": "Approve"
             },
             "style": "primary",
-            "value": channel+':'+message.user,
+            "value": channel+':'+message.user+':'+ts,
             "action_id": "confirm_approve"
           },
           {
@@ -176,7 +179,7 @@ app.message('!reviewers', async ({message, say}) => {
               "text": "Cancel"
             },
             "style": "danger",
-            "value": channel+':'+message.user,
+            "value": channel+':'+message.user+':'+ts,
             "action_id": "confirm_cancel"
           },
           {
@@ -186,7 +189,7 @@ app.message('!reviewers', async ({message, say}) => {
               "emoji": true,
               "text": "Reroll 🎲"
             },
-            "value": groupSize+"",
+            "value": channel+':'+message.user+':'+ts+':'+groupSize,
             "action_id": "confirm_reroll"
           },
         ]
@@ -244,6 +247,8 @@ app.action('confirm_approve', async ({ body, ack, say, client}) => {
   // Acknowledge the action
   const channel = body.container.channel_id;
   const reviewers = temp_dict.get(channel);
+  const params = body.actions[0].value.split(':');
+  ts = params[2]
   try {
     await ack();
     // Start: If after approving and cr_dict is empty, refresh it with all members and let it get filtered by cr_temp_dict
@@ -259,7 +264,7 @@ app.action('confirm_approve', async ({ body, ack, say, client}) => {
       const filtered_array = next_dict.get(channel).filter(item => !reviewer.includes(item));
       update_next_dict(channel, filtered_array);
     }
-    await say(message);
+    await client.chat.postMessage({channel, thread_ts: ts, text: message});
     // Start Edge Case: If all members participated in the code reviewers, dictionary will be empty, so refresh.
     if(next_dict.get(channel).length == 0) {
       const members = members_dict.get(channel);
@@ -273,14 +278,17 @@ app.action('confirm_approve', async ({ body, ack, say, client}) => {
 });
 
 app.action('confirm_cancel', async ({ body, ack, say, client}) => {
+  const channel = body.container.channel_id;
   // Acknowledge the action
   await ack();
   const params = body.actions[0].value.split(':'); 
   clear_temp_dict(body.container.channel_id);
-  await say(`C.R.A.B. cancelling`);
+  // await say(`C.R.A.B. cancelling`);
+  await client.chat.postMessage({channel, thread_ts: ts, text: 'C.R.A.B cancelling'});
 });
 
 app.action('confirm_reroll', async ({ body, ack, say, client }) => {
+
   // Acknowledge the action
   await ack();
 
@@ -288,7 +296,10 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
   // Start of copy of reviewers method
   const channel = body.container.channel_id;
   let members = next_dict.get(channel).slice();
-  let membersNum = parseInt(body.actions[0].value);
+  const params = body.actions[0].value.split(':');
+  let membersNum = params[3];
+  let ts = params[2];
+  let user = params[1]
   const groupSize = membersNum;
 
   clear_temp_dict(channel);
@@ -322,7 +333,10 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
   for(let i = 0; i < reviewers.length; i++) {
     reviewersText = reviewersText.concat(`<@${reviewers[i]}>\n`);
   }
-  const result = await say({
+  const result = await client.chat.postEphemeral({
+    channel,
+    thread_ts: ts,
+    user: user,
     blocks: [
       {
         "type": "section",
@@ -351,7 +365,7 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
               "text": "Approve"
             },
             "style": "primary",
-            "value": "placeholder",
+            "value": channel+':'+user+':'+ts,
             "action_id": "confirm_approve"
           },
           {
@@ -362,7 +376,7 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
               "text": "Cancel"
             },
             "style": "danger",
-            "value": "placeholder",
+            "value": channel+':'+user+':'+ts,
             "action_id": "confirm_cancel"
           },
           {
@@ -372,7 +386,7 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
               "emoji": true,
               "text": "Reroll 🎲"
             },
-            "value": groupSize+"",
+            "value": channel+':'+user+':'+ts+':'+groupSize,
             "action_id": "confirm_reroll"
           },
         ]
