@@ -1,7 +1,8 @@
 import dotenv from 'dotenv';
 import { jokes } from "./crab-jokes.js";
-import pkg from '@slack/bolt';
-const { App } = pkg;
+import slackBolt from '@slack/bolt';
+
+const { App } = slackBolt;
 
 dotenv.config();
 
