@@ -306,7 +306,7 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
   clear_temp_dict(channel);
   
   while(membersNum > 0) {
-    if(members.length == 0) {
+    if(members.length == 0 || members.length == groupSize) {
       const all_members = members_dict.get(channel).slice();
       const rand = Math.floor(Math.random()*all_members.length);
       const member = all_members.splice(rand, 1)[0]; 
