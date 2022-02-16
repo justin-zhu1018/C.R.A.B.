@@ -49,18 +49,26 @@ app.message('!init', async ({ message, say}) => {
 });
 
 app.message('!members', async ({ message, say}) => {
-  await say(`Members are: `);
   const channel_id = message.channel;
   const members = members_dict.get(channel_id);
+  if(!members) {
+    say(`Please type the !init command to initialize the bot first 🦀`);
+    return;
+  }
+  await say(`Members are: `);
   for (elem of members) {
       await say(`<@${elem}>`);
   }
 });
 
 app.message('!next', async ({ message, say}) => {
-  await say(`Remaining available code reviewers are: `);
   const channel_id = message.channel;
   const members = cr_dict.get(channel_id);
+  if(!members) {
+    say(`Please type the !init command to initialize the bot first 🦀`);
+    return;
+  }
+  await say(`Remaining available code reviewers are: `);
   for (elem of members) {
       await say(`<@${elem}>`);
   }
@@ -68,6 +76,10 @@ app.message('!next', async ({ message, say}) => {
 
 app.message('!reviewers', async ({message, say}) => {
   const channel = message.channel;
+  if( !members_dict.get(channel) || !cr_dict.get(channel) ){
+    say(`Please type the !init command to initialize the bot first 🦀`);
+    return;
+  }
   let members = cr_dict.get(channel).slice();
   const total_max_members = members_dict.get(channel).length;
   const regex = /\d+$/;
@@ -88,7 +100,8 @@ app.message('!reviewers', async ({message, say}) => {
     }
   }
   catch (err) {
-    say('Please input number of reviewers to select');
+    await say('Please include the number of reviewers to select (i.e. `!reviewers 2` for 2 code reviewers)');
+    return;
   }
   
   const groupSize = membersNum;
