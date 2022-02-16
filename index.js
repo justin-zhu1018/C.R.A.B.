@@ -5,6 +5,10 @@ const { App } = require('@slack/bolt');
 
 dotenv.config();
 
+let members_dict = new Map();
+let cr_dict = new Map();
+let cr_temp_dict = new Map();
+
 const app = new App({
     token: process.env.SLACK_BOT_TOKEN,
     signingSecret: process.env.SLACK_SIGNING_SECRET,
@@ -12,232 +16,306 @@ const app = new App({
     appToken: process.env.SLACK_APP_TOKEN
 });
 
-app.message('hello', async ({ message, say}) => {
-    console.log(`user: ${message.user}`);
-    await say({
-        blocks: [
-          {
-            "type": "section",
-            "text": {
-              "type": "mrkdwn",
-              "text": `Hey there <@${message.user}>!`
-            },
-            "accessory": {
-              "type": "button",
-              "text": {
-                "type": "plain_text",
-                "text": "Click Me"
-              },
-              "action_id": "button_click"
-            }
-          }
-        ],
-        text: `Hey there <@${message.user}>!`
-    });
-});
-    
-app.action('button_click', async ({ body, ack, say }) => {
-    // Acknowledge the action
-    await ack();
-    await say(`<@${body.user.id}> clicked the button`);
-});
-    
+const update_members = (channel_id, members_list) => {
+  members_dict.set(channel_id, members_list);
+}
+const update_cr = (channel_id, members_list) => {
+  cr_dict.set(channel_id, members_list);
+}
 
-app.message('sleep', async ({ message, say}) => {
-    await say(`Sleep now <@${message.user}>!`);
+const clear_temp = (channel_id) => {
+  cr_temp_dict.set(channel_id, []);
+}
+
+app.message('!initialize', async ({ message, say}) => {
+  const members_res = await app.client.conversations.members({
+      channel: message.channel
+  });
+  // console.log(members_res);
+  const channel_id = message.channel;
+  const members = members_res.members;
+  update_members(channel_id, members);
+  update_cr(channel_id, members);
+  await say(`Members are: `);
+  for (elem of members_dict.get(channel_id)) {
+      await say(`<@${elem}>`);
+  } 
 });
 
-app.message('members', async ({message, say}) => {
-    const members_res = await app.client.conversations.members({
-        channel: message.channel
-    });
-    console.log(members_res);
-    const members = members_res.members;
-    members.splice(members.indexOf(message.user), 1);
-    await say(`Members are: `);
-    for (elem of members_res.members) {
-        await say(`<@${elem}>`);
-    }
+app.message('!members', async ({ message, say}) => {
+  await say(`Members are: `);
+  const channel_id = message.channel;
+  const members = members_dict.get(channel_id);
+  for (elem of members) {
+      await say(`<@${elem}>`);
+  }
 });
 
-app.message('Confirm', async({message, client, logger}) => {
+app.message('!next', async ({ message, say}) => {
+  await say(`Remaining available code reviewers are: `);
+  const channel_id = message.channel;
+  const members = cr_dict.get(channel_id);
+  for (elem of members) {
+      await say(`<@${elem}>`);
+  }
+});
+
+app.message('!reviewers', async ({message, say}) => {
+  const channel = message.channel;
+  let members = cr_dict.get(channel).slice();
+  const total_max_members = members_dict.get(channel).length;
+  const regex = /\d+$/;
+  let membersNum;
   try {
-      const {channel, ts} = message;
-      const confirmText = `Please confirm that these members are available for code review. Otherwise, reroll another combination! <@${message.user}>`
-      const result = await client.chat.postEphemeral({
-          channel,
-          blocks: [
-            {
-              "type": "section",
-              "text": {
-                "type": "mrkdwn",
-                "text": confirmText,
-              }
-            },
-            {
-              "type": "section",
-              "fields": [
-                {
-                  "type": "mrkdwn",
-                  "text": "*Sample:*\nField"
-                },
-              ],
-            },
-            {
-              "type": "actions",
-              "elements": [
-                {
-                  "type": "button",
-                  "text": {
-                    "type": "plain_text",
-                    "emoji": true,
-                    "text": "Approve"
-                  },
-                  "style": "primary",
-                  "value": channel+':'+message.user,
-                  "action_id": "confirm_approve"
-                },
-                {
-                  "type": "button",
-                  "text": {
-                    "type": "plain_text",
-                    "emoji": true,
-                    "text": "Deny"
-                  },
-                  "style": "danger",
-                  "value": channel+':'+message.user,
-                  "action_id": "confirm_deny"
-                },
-                {
-                  "type": "button",
-                  "text": {
-                    "type": "plain_text",
-                    "emoji": true,
-                    "text": "Reroll 🎲"
-                  },
-                  "value": channel+':'+message.user,
-                  "action_id": "confirm_reroll"
-                },
-              ]
-            }
-          ],
-          user: message.user
-      });
-      logger.info(result);
+    const messageMatch = message.text.match(regex)[0];
+    // console.log(message.text.match(regex));
+
+    membersNum = parseInt(messageMatch);
+    if (membersNum < 1) {
+      await say('Please input a number greater than 0');
+      return;
+    }
+
+    if (membersNum > total_max_members) {
+      await say('Number of reviewers to select is higher than the members count');
+      return;
+    }
   }
-  catch (error) {
-      logger.error(error);
+  catch (err) {
+    say('Please input number of reviewers to select');
   }
+  
+  const groupSize = membersNum;
+  clear_temp(channel);
+  
+  while(membersNum > 0) {
+    if(members.length == 0) {
+      const all_members = members_dict.get(channel).slice();
+      console.log(all_members);
+      const rand = Math.floor(Math.random()*all_members.length);
+      const member = all_members.splice(rand, 1)[0]; 
+      console.log(member);
+      if(!(member in cr_temp_dict.get(channel))) {
+        cr_temp_dict.get(channel).push(member);
+        membersNum--;
+      }
+      else {
+        continue;
+      }
+    } else {
+      const rand = Math.floor(Math.random()*members.length);
+      const member = members.splice(rand, 1)[0]; 
+      cr_temp_dict.get(channel).push(member);
+      membersNum--;
+    }
+  }
+  const reviewers = cr_temp_dict.get(channel);
+  const confirmText = `Please confirm that these members are available for code review. Otherwise, reroll another combination! <@${message.user}>`;
+  let reviewersText = "*Code Reviewers*\n";
+  for(let i = 0; i < reviewers.length; i++) {
+    reviewersText = reviewersText.concat(`<@${reviewers[i]}>\n`);
+  }
+  const result = await say({
+    blocks: [
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": confirmText,
+        }
+      },
+      {
+        "type": "section",
+        "fields": [
+          {
+            "type": "mrkdwn",
+            "text": reviewersText,
+          },
+        ],
+      },
+      {
+        "type": "actions",
+        "elements": [
+          {
+            "type": "button",
+            "text": {
+              "type": "plain_text",
+              "emoji": true,
+              "text": "Approve"
+            },
+            "style": "primary",
+            "value": channel+':'+message.user,
+            "action_id": "confirm_approve"
+          },
+          {
+            "type": "button",
+            "text": {
+              "type": "plain_text",
+              "emoji": true,
+              "text": "Cancel"
+            },
+            "style": "danger",
+            "value": channel+':'+message.user,
+            "action_id": "confirm_cancel"
+          },
+          {
+            "type": "button",
+            "text": {
+              "type": "plain_text",
+              "emoji": true,
+              "text": "Reroll 🎲"
+            },
+            "value": groupSize+"",
+            "action_id": "confirm_reroll"
+          },
+        ]
+      }
+    ]
+  });
 });
 
 app.action('confirm_approve', async ({ body, ack, say, client}) => {
   // Acknowledge the action
+  const channel = body.container.channel_id;
+  const reviewers = cr_temp_dict.get(channel);
   try {
     await ack();
-    // console.log(body.actions[0]);
-    const params = body.actions[0].value.split(':');
-    // console.log(params);
-    await client.chat.postEphemeral({
-      channel: params[0],
-      user: params[1],
-      text: `Approve!`
-    });
+    // Start: If after approving and cr_dict is empty, refresh it with all members and let it get filtered by cr_temp_dict
+    if(cr_dict.get(channel).length == 0) {
+      const members = members_dict.get(channel);
+      update_cr(channel, members);
+    }
+    // End
+    let message = "*Selected Code Reviewers*\n";
+    for(let i = 0; i < reviewers.length; i++) {
+      const reviewer = reviewers[i];
+      message = message.concat(`<@${reviewer}>\n`);
+      const filtered_array = cr_dict.get(channel).filter(item => !reviewer.includes(item));
+      update_cr(channel, filtered_array);
+    }
+    await say(message);
+    // Start Edge Case: If all members participated in the CR, dictionary will be empty, so refresh.
+    if(cr_dict.get(channel).length == 0) {
+      const members = members_dict.get(channel);
+      update_cr(channel, members);
+    }
+    // End
   } catch (error) {
     console.log(error);
   }
   // await say(`Approved <@${body.user.id}>!`);
 });
 
-app.action('confirm_deny', async ({ body, ack, say, client}) => {
+app.action('confirm_cancel', async ({ body, ack, say, client}) => {
   // Acknowledge the action
   await ack();
-  const params = body.actions[0].value.split(':');
-  // console.log(params);
-  await client.chat.postEphemeral({
-    channel: params[0],
-    user: params[1],
-    text: `Deny!`
-  });
-  // await say(`Deny <@${body.user.id}>!`);
+  const params = body.actions[0].value.split(':'); 
+  clear_temp(body.container.channel_id);
+  await say(`C.R.A.B. cancelling`);
 });
 
 app.action('confirm_reroll', async ({ body, ack, say, client }) => {
   // Acknowledge the action
   await ack();
-  const params = body.actions[0].value.split(':');
-  // console.log(params);
-  await client.chat.postEphemeral({
-    channel: params[0],
-    user: params[1],
-    text: `Reroll!`
-  });
-  // await say(`Reroll <@${body.user.id}>!`);
-});
 
-app.message('!reviewers', async ({message, say}) => {
-  const membersRes = await app.client.conversations.members({
-      channel: message.channel
-  });
-  console.log(message.text);
-  console.log(membersRes);
+  console.log(body);
+  // Start of copy of reviewers method
+  const channel = body.container.channel_id;
+  let members = cr_dict.get(channel).slice();
+  let membersNum = parseInt(body.actions[0].value);
+  const groupSize = membersNum;
 
-  const regex = /\d+$/;
-  try {
-    const messageMatch = message.text.match(regex)[0];
-    console.log(message.text.match(regex));
-
-    const membersNum = parseInt(messageMatch);
-    console.log(membersNum);
-    if (membersNum < 1) {
-      await say('Please input a number greater than 0');
-      return;
-    }
-
-    const members = membersRes.members;
-
-    if (membersNum > members.length) {
-      await say('Number of reviewers to select is higher than the members count');
-      return;
-    }
-
-    members.splice(members.indexOf(message.user), 1);
-    await say(`Random members: `);
-    for (let i=0; i<membersNum; i++) {
+  clear_temp(channel);
+  
+  while(membersNum > 0) {
+    if(members.length == 0) {
+      const all_members = members_dict.get(channel).slice();
+      console.log(all_members);
+      const rand = Math.floor(Math.random()*all_members.length);
+      const member = all_members.splice(rand, 1)[0]; 
+      console.log(member);
+      if(!(member in cr_temp_dict.get(channel))) {
+        cr_temp_dict.get(channel).push(member);
+        membersNum--;
+      }
+      else {
+        continue;
+      }
+    } else {
       const rand = Math.floor(Math.random()*members.length);
-      await say(`<@${members[rand]}>`);
-      members.splice(rand, 1);
+      const member = members.splice(rand, 1)[0]; 
+      cr_temp_dict.get(channel).push(member);
+      console.log("Temp: " + cr_temp_dict.get(channel));
+      membersNum--;
     }
-
-    await say({
-      blocks: [
-        {
-          "type": "section",
-          "text": {
+  }
+  const reviewers = cr_temp_dict.get(channel);
+  const confirmText = `Please confirm that these members are available for code review. Otherwise, reroll another combination!`;
+  let reviewersText = "*Code Reviewers*\n";
+  for(let i = 0; i < reviewers.length; i++) {
+    reviewersText = reviewersText.concat(`<@${reviewers[i]}>\n`);
+  }
+  const result = await say({
+    blocks: [
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": confirmText,
+        }
+      },
+      {
+        "type": "section",
+        "fields": [
+          {
             "type": "mrkdwn",
-            "text": `Do you wish to reroll <@${message.user}>?`
+            "text": reviewersText,
           },
-          "accessory": {
+        ],
+      },
+      {
+        "type": "actions",
+        "elements": [
+          {
             "type": "button",
             "text": {
               "type": "plain_text",
-              "text": "Reroll"
+              "emoji": true,
+              "text": "Approve"
             },
-            "action_id": "reroll_click"
-          }
-        }
-      ],
-      text: `Do you wish to reroll <@${message.user}>?`
+            "style": "primary",
+            "value": "placeholder",
+            "action_id": "confirm_approve"
+          },
+          {
+            "type": "button",
+            "text": {
+              "type": "plain_text",
+              "emoji": true,
+              "text": "Cancel"
+            },
+            "style": "danger",
+            "value": "placeholder",
+            "action_id": "confirm_cancel"
+          },
+          {
+            "type": "button",
+            "text": {
+              "type": "plain_text",
+              "emoji": true,
+              "text": "Reroll 🎲"
+            },
+            "value": groupSize+"",
+            "action_id": "confirm_reroll"
+          },
+        ]
+      }
+    ]
   });
-}
-catch (err) {
-  say('Please input number of reviewers to select');
-}
 });
 
-app.action('reroll_click', async ({ body, ack, say }) => {
-// Acknowledge the action
-await ack();
-await say(`<@${body.user.id}> rerolled!`);
+app.message('!feeling-crabby', async ({ message, say}) => {
+  await say(`*Insert crab joke here*`);
 });
 
 (async () => {
