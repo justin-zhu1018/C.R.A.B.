@@ -6,8 +6,8 @@ const { App } = require('@slack/bolt');
 dotenv.config();
 
 let members_dict = new Map();
-let cr_dict = new Map();
-let cr_temp_dict = new Map();
+let next_dict = new Map();
+let temp_dict = new Map();
 
 const app = new App({
     token: process.env.SLACK_BOT_TOKEN,
@@ -16,15 +16,15 @@ const app = new App({
     appToken: process.env.SLACK_APP_TOKEN
 });
 
-const update_members = (channel_id, members_list) => {
+const update_members_dict = (channel_id, members_list) => {
   members_dict.set(channel_id, members_list);
 }
-const update_cr = (channel_id, members_list) => {
-  cr_dict.set(channel_id, members_list);
+const update_next_dict = (channel_id, members_list) => {
+  next_dict.set(channel_id, members_list);
 }
 
-const clear_temp = (channel_id) => {
-  cr_temp_dict.set(channel_id, []);
+const clear_temp_dict = (channel_id) => {
+  temp_dict.set(channel_id, []);
 }
 
 app.message('!init', async ({ message, say}) => {
@@ -40,8 +40,8 @@ app.message('!init', async ({ message, say}) => {
   });
   const channel_id = message.channel;
   const members = filteredMemberList;
-  update_members(channel_id, members);
-  update_cr(channel_id, members);
+  update_members_dict(channel_id, members);
+  update_next_dict(channel_id, members);
   await say(`Members are: `);
   for (elem of members_dict.get(channel_id)) {
       await say(`<@${elem}>`);
@@ -63,7 +63,7 @@ app.message('!members', async ({ message, say}) => {
 
 app.message('!next', async ({ message, say}) => {
   const channel_id = message.channel;
-  const members = cr_dict.get(channel_id);
+  const members = next_dict.get(channel_id);
   if(!members) {
     say(`Please type the !init command to initialize the bot first 🦀`);
     return;
@@ -76,11 +76,11 @@ app.message('!next', async ({ message, say}) => {
 
 app.message('!reviewers', async ({message, say}) => {
   const channel = message.channel;
-  if( !members_dict.get(channel) || !cr_dict.get(channel) ){
+  if( !members_dict.get(channel) || !next_dict.get(channel) ){
     say(`Please type the !init command to initialize the bot first 🦀`);
     return;
   }
-  let members = cr_dict.get(channel).slice();
+  let members = next_dict.get(channel).slice();
   const total_max_members = members_dict.get(channel).length;
   const regex = /\d+$/;
   let membersNum;
@@ -105,7 +105,7 @@ app.message('!reviewers', async ({message, say}) => {
   }
   
   const groupSize = membersNum;
-  clear_temp(channel);
+  clear_temp_dict(channel);
   
   while(membersNum > 0) {
     if(members.length == 0) {
@@ -114,8 +114,8 @@ app.message('!reviewers', async ({message, say}) => {
       const rand = Math.floor(Math.random()*all_members.length);
       const member = all_members.splice(rand, 1)[0]; 
       console.log(member);
-      if(!(member in cr_temp_dict.get(channel))) {
-        cr_temp_dict.get(channel).push(member);
+      if(!(member in temp_dict.get(channel))) {
+        temp_dict.get(channel).push(member);
         membersNum--;
       }
       else {
@@ -124,11 +124,11 @@ app.message('!reviewers', async ({message, say}) => {
     } else {
       const rand = Math.floor(Math.random()*members.length);
       const member = members.splice(rand, 1)[0]; 
-      cr_temp_dict.get(channel).push(member);
+      temp_dict.get(channel).push(member);
       membersNum--;
     }
   }
-  const reviewers = cr_temp_dict.get(channel);
+  const reviewers = temp_dict.get(channel);
   const confirmText = `Please confirm that these members are available for code review. Otherwise, reroll another combination! <@${message.user}>`;
   let reviewersText = "*Code Reviewers*\n";
   for(let i = 0; i < reviewers.length; i++) {
@@ -196,27 +196,27 @@ app.message('!reviewers', async ({message, say}) => {
 app.action('confirm_approve', async ({ body, ack, say, client}) => {
   // Acknowledge the action
   const channel = body.container.channel_id;
-  const reviewers = cr_temp_dict.get(channel);
+  const reviewers = temp_dict.get(channel);
   try {
     await ack();
     // Start: If after approving and cr_dict is empty, refresh it with all members and let it get filtered by cr_temp_dict
-    if(cr_dict.get(channel).length == 0) {
+    if(next_dict.get(channel).length == 0) {
       const members = members_dict.get(channel);
-      update_cr(channel, members);
+      update_next_dict(channel, members);
     }
     // End
     let message = "*Selected Code Reviewers*\n";
     for(let i = 0; i < reviewers.length; i++) {
       const reviewer = reviewers[i];
       message = message.concat(`<@${reviewer}>\n`);
-      const filtered_array = cr_dict.get(channel).filter(item => !reviewer.includes(item));
-      update_cr(channel, filtered_array);
+      const filtered_array = next_dict.get(channel).filter(item => !reviewer.includes(item));
+      update_next_dict(channel, filtered_array);
     }
     await say(message);
-    // Start Edge Case: If all members participated in the CR, dictionary will be empty, so refresh.
-    if(cr_dict.get(channel).length == 0) {
+    // Start Edge Case: If all members participated in the code reviewers, dictionary will be empty, so refresh.
+    if(next_dict.get(channel).length == 0) {
       const members = members_dict.get(channel);
-      update_cr(channel, members);
+      update_next_dict(channel, members);
     }
     // End
   } catch (error) {
@@ -229,7 +229,7 @@ app.action('confirm_cancel', async ({ body, ack, say, client}) => {
   // Acknowledge the action
   await ack();
   const params = body.actions[0].value.split(':'); 
-  clear_temp(body.container.channel_id);
+  clear_temp_dict(body.container.channel_id);
   await say(`C.R.A.B. cancelling`);
 });
 
@@ -240,11 +240,11 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
   console.log(body);
   // Start of copy of reviewers method
   const channel = body.container.channel_id;
-  let members = cr_dict.get(channel).slice();
+  let members = next_dict.get(channel).slice();
   let membersNum = parseInt(body.actions[0].value);
   const groupSize = membersNum;
 
-  clear_temp(channel);
+  clear_temp_dict(channel);
   
   while(membersNum > 0) {
     if(members.length == 0) {
@@ -253,8 +253,8 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
       const rand = Math.floor(Math.random()*all_members.length);
       const member = all_members.splice(rand, 1)[0]; 
       console.log(member);
-      if(!(member in cr_temp_dict.get(channel))) {
-        cr_temp_dict.get(channel).push(member);
+      if(!(member in temp_dict.get(channel))) {
+        temp_dict.get(channel).push(member);
         membersNum--;
       }
       else {
@@ -263,12 +263,12 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
     } else {
       const rand = Math.floor(Math.random()*members.length);
       const member = members.splice(rand, 1)[0]; 
-      cr_temp_dict.get(channel).push(member);
-      console.log("Temp: " + cr_temp_dict.get(channel));
+      temp_dict.get(channel).push(member);
+      console.log("Temp: " + temp_dict.get(channel));
       membersNum--;
     }
   }
-  const reviewers = cr_temp_dict.get(channel);
+  const reviewers = temp_dict.get(channel);
   const confirmText = `Please confirm that these members are available for code review. Otherwise, reroll another combination!`;
   let reviewersText = "*Code Reviewers*\n";
   for(let i = 0; i < reviewers.length; i++) {
