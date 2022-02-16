@@ -36,7 +36,7 @@ app.message('!init', async ({ message, say}) => {
   let filteredMemberList = [];
   members_res.members.forEach(async e => {
     const res = await app.client.users.info({user: e});
-    // if(!res.user.is_bot)
+    if(!res.user.is_bot)
       filteredMemberList.push(e);
   });
   const channel_id = message.channel;
@@ -57,7 +57,7 @@ app.message('!members', async ({ message, say}) => {
     return;
   }
   await say(`Members are: `);
-  for (elem of members) {
+  for (const elem of members) {
       await say(`<@${elem}>`);
   }
 });
@@ -70,7 +70,7 @@ app.message('!next', async ({ message, say}) => {
     return;
   }
   await say(`Remaining available code reviewers are: `);
-  for (elem of members) {
+  for (const elem of members) {
       await say(`<@${elem}>`);
   }
 });
@@ -189,6 +189,51 @@ app.message('!reviewers', async ({message, say}) => {
             "value": groupSize+"",
             "action_id": "confirm_reroll"
           },
+        ]
+      }
+    ]
+  });
+});
+
+app.message('!help', async ({ message, say}) => {
+  const init = `*!init*\nInitialize rotation list of members to choose reviewers from.\n\n`;
+  const reviewers = '*!reviewers `number`*\nRequest a code review. Replace {number} with the number of code reviewers you want.\n\n';
+  const members = `*!members*\nLists all potential members for code reviews.\n\n`;
+  const next = `*!next*\nLists the remaining members who have not done a code review yet in the current rotation.\n\n`;
+  const crab = `*!feeling-crabby*\n🦀 🦀 🦀 🦀\n\n`;
+  const help = `*!help*\nThis command right here.`
+  const commands = init + reviewers + members + next + crab + help;
+  const result = await say({
+    blocks: [
+      {
+        "type": "header",
+        "text": {
+          "type": "plain_text",
+          "text": `List of Commands`,
+        }
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "section",
+        "fields": [
+          {
+            "type": "mrkdwn",
+            "text": commands
+          }
+        ],
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "context",
+        "elements": [
+          {
+            "type": "mrkdwn",
+            "text": "ℹ Want more info? Visit our <https://github.com/justin-zhu1018/C.R.A.B.|GitHub>!"
+          }
         ]
       }
     ]
