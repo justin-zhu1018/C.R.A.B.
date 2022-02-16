@@ -27,13 +27,19 @@ const clear_temp = (channel_id) => {
   cr_temp_dict.set(channel_id, []);
 }
 
-app.message('!initialize', async ({ message, say}) => {
+app.message('!init', async ({ message, say}) => {
   const members_res = await app.client.conversations.members({
       channel: message.channel
   });
   // console.log(members_res);
+  let filteredMemberList = [];
+  members_res.members.forEach(async e => {
+    const res = await app.client.users.info({user: e});
+    if(!res.user.is_bot)
+      filteredMemberList.push(e);
+  });
   const channel_id = message.channel;
-  const members = members_res.members;
+  const members = filteredMemberList;
   update_members(channel_id, members);
   update_cr(channel_id, members);
   await say(`Members are: `);
