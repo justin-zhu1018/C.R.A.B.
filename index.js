@@ -1,6 +1,7 @@
 const axios = require('axios');
 const dotenv = require('dotenv');
-
+// import { jokes } from "./crab-jokes";
+const {jokes} = require('./crab-jokes');
 const { App } = require('@slack/bolt');
 
 dotenv.config();
@@ -337,6 +338,11 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
 
 app.message('!feeling-crabby', async ({ message, say}) => {
   await say(`*Insert crab joke here*`);
+  const channel = message.channel;
+  const size = 20;
+  const rand = Math.floor(Math.random()*size)+1+"";
+  console.log(rand);
+  console.log(jokes.rand);
 });
 
 (async () => {
