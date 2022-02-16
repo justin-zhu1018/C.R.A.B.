@@ -44,7 +44,7 @@ app.message('!init', async ({ message, say}) => {
   update_members_dict(channel_id, members);
   update_next_dict(channel_id, members);
   await say(`Members are: `);
-  for (elem of members_dict.get(channel_id)) {
+  for (const elem of members_dict.get(channel_id)) {
       await say(`<@${elem}>`);
   } 
 });
