@@ -36,7 +36,7 @@ app.message('!init', async ({ message, say}) => {
   let filteredMemberList = [];
   members_res.members.forEach(async e => {
     const res = await app.client.users.info({user: e});
-    if(!res.user.is_bot)
+    // if(!res.user.is_bot)
       filteredMemberList.push(e);
   });
   const channel_id = message.channel;
@@ -82,6 +82,7 @@ app.message('!reviewers', async ({message, say, client}) => {
     return;
   }
   let members = next_dict.get(channel).slice();
+  const requestor = message.user;
   const total_max_members = members_dict.get(channel).length;
   const regex = /\d+$/;
   let membersNum;
@@ -114,6 +115,7 @@ app.message('!reviewers', async ({message, say, client}) => {
       console.log(all_members);
       const rand = Math.floor(Math.random()*all_members.length);
       const member = all_members.splice(rand, 1)[0]; 
+      if(member == requestor) continue;
       console.log(member);
       if((temp_dict.get(channel).includes(member))) {
         console.log(member + " in temp dictionary")
@@ -126,6 +128,7 @@ app.message('!reviewers', async ({message, say, client}) => {
     } else {
       const rand = Math.floor(Math.random()*members.length);
       const member = members.splice(rand, 1)[0]; 
+      if(member == requestor) continue;
       temp_dict.get(channel).push(member);
       membersNum--;
     }
@@ -302,6 +305,9 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
   let membersNum = params[3];
   let ts = params[2];
   let user = params[1]
+  const requestor = user;
+  members = members.filter(item => item !== user);
+  console.log(members);
   const groupSize = membersNum;
 
   clear_temp_dict(channel);
@@ -311,6 +317,7 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
       const all_members = members_dict.get(channel).slice();
       const rand = Math.floor(Math.random()*all_members.length);
       const member = all_members.splice(rand, 1)[0]; 
+      if(member == requestor) continue;
       // console.log(member);
       // console.log(temp_dict.get(channel));
       if((temp_dict.get(channel).includes(member))) {
@@ -324,6 +331,7 @@ app.action('confirm_reroll', async ({ body, ack, say, client }) => {
     } else {
       const rand = Math.floor(Math.random()*members.length);
       const member = members.splice(rand, 1)[0]; 
+      if(member == requestor) continue;
       temp_dict.get(channel).push(member);
       // console.log("Temp: " + temp_dict.get(channel));
       membersNum--;
