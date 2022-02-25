@@ -35,7 +35,7 @@ export const jokes = [
 
     "What do crabs order when they go to a coffee shop? A cup of crab-uccino!",
 
-    "How to crabs call their friends? On a shell phone!",
+    "How do crabs call their friends? On a shell phone!",
 
     "Why do crabs never give to charity? Because they’re shellfish!"
 ]
