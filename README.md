@@ -42,7 +42,7 @@ Shows all members that can be selected for code review in the current rotation
 
 `!help`
 
-Shows all commands for this slack bot
+Shows all commands for this Slack bot
 
 `!feeling-crabby`
 
