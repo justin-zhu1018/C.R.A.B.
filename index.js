@@ -201,7 +201,7 @@ app.message('!reviewers', async ({message, say, client}) => {
 
 app.message('!help', async ({ message, say}) => {
   const init = `*!init*\nInitialize rotation list of members to choose reviewers from.\n\n`;
-  const reviewers = '*!reviewers `number`*\nRequest a code review. Replace {number} with the number of code reviewers you want.\n\n';
+  const reviewers = '*!reviewers `number`*\nRequest a code review. Replace `number` with the number of code reviewers you want.\n\n';
   const members = `*!members*\nLists all potential members for code reviews.\n\n`;
   const next = `*!next*\nLists the remaining members who have not done a code review yet in the current rotation.\n\n`;
   const crab = `*!feeling-crabby*\n🦀 🦀 🦀 🦀\n\n`;
